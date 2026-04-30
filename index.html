@@ -11,13 +11,13 @@
 <meta property="og:type" content="website">
 <meta property="og:title" content="사랑이네">
 <meta property="og:description" content="사랑이네">
-<meta property="og:url" content="https://loves.dothome.co.kr">
+<meta property="og:url" content="https://blogsteller-rgb.github.io/family/">
 <meta property="og:locale" content="ko_KR">
 <meta property="og:site_name" content="사랑이네">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="사랑이네">
 <meta name="twitter:description" content="사랑이네">
-<link rel="canonical" href="https://loves.dothome.co.kr">
+<link rel="canonical" href="https://blogsteller-rgb.github.io/family/">
 <!-- 네이버 서치어드바이저 인증 코드 (발급 후 아래 주석 해제하고 코드 입력) -->
 <!-- <meta name="naver-site-verification" content="YOUR_CODE"> -->
 <!-- 구글 서치콘솔 인증 코드 (발급 후 아래 주석 해제하고 코드 입력) -->
@@ -1348,13 +1348,11 @@
 // ⚠️ 절대 공개된 곳에 토큰을 노출하지 마세요! (이 파일은 public이므로 주의)
 // 💡 대안: 별도의 config.js 파일을 만들어 .gitignore에 추가하거나, GitHub Secrets 사용
 
-// GitHub Pages 공개 URL 직접 fetch (토큰 불필요)
 const GITHUB_CONFIG = {
-  owner: 'blogsteller-rgb',
-  repo: 'family',
-  path: 'pets_data.json',
-  // 공개 저장소라서 토큰 없이 raw URL로 직접 읽어요
-  rawUrl: 'https://blogsteller-rgb.github.io/family/pets_data.json'
+  owner: 'blogsteller',     // GitHub 사용자명
+  repo: 'family',             // 리포지토리 이름
+  path: 'data/pets_data.json',         // 저장할 파일 경로
+  token: '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'          // Personal Access Token (repo 권한 필요)
 };
 
 // ============================================================
@@ -1373,30 +1371,47 @@ const DATA_VERSION = 'v4_github';
 // GitHub API 함수
 // ============================================================
 
-// GitHub Pages 공개 URL에서 pets_data.json 직접 읽기
+// GitHub에서 pets.json 파일 읽기
 async function fetchPetsFromGitHub() {
+  const url = `https://api.github.com/repos/${GITHUB_CONFIG.owner}/${GITHUB_CONFIG.repo}/contents/${GITHUB_CONFIG.path}`;
+  
   try {
-    // 캐시 방지: 타임스탬프 쿼리 추가
-    const url = GITHUB_CONFIG.rawUrl + '?t=' + Date.now();
-    const response = await fetch(url);
-    if (!response.ok) throw new Error('파일 없음: ' + response.status);
+    const response = await fetch(url, {
+      headers: {
+        'Authorization': `token ${GITHUB_CONFIG.token}`,
+        'Accept': 'application/vnd.github.v3+json'
+      }
+    });
+    
+    if (response.status === 404) {
+      // 파일이 없으면 새로 생성
+      console.log('pets.json 파일이 없습니다. 새로 생성합니다.');
+      return null;
+    }
+    
+    if (!response.ok) {
+      throw new Error(`GitHub API 오류: ${response.status}`);
+    }
+    
     const data = await response.json();
-    // 배열이면 바로 사용, 객체면 pets 추출
-    const petsData = Array.isArray(data) ? data : (data.pets || []);
-    console.log('✅ pets_data.json 로드 성공:', petsData.length + '마리');
-    return petsData;
+    const content = atob(data.content); // Base64 디코드
+    const jsonData = JSON.parse(content);
+    
+    // 버전 체크
+    if (jsonData.version === DATA_VERSION) {
+      return jsonData.pets;
+    } else {
+      console.log('데이터 버전이 다릅니다. 마이그레이션이 필요할 수 있습니다.');
+      return jsonData.pets || [];
+    }
   } catch (error) {
-    console.error('pets_data.json 로드 실패:', error);
+    console.error('GitHub에서 데이터 읽기 실패:', error);
     return null;
   }
 }
 
-// GitHub에 직접 쓰기는 토큰 필요 — pets_data.json 수정 후 GitHub에 직접 올리세요
+// GitHub에 pets.json 파일 저장 (업데이트)
 async function savePetsToGitHub(petsData) {
-  console.log('ℹ️ 데이터는 pets_data.json 파일을 직접 수정해서 GitHub에 올려주세요.');
-  return false;
-}
-async function _savePetsToGitHub_disabled(petsData) {
   const url = `https://api.github.com/repos/${GITHUB_CONFIG.owner}/${GITHUB_CONFIG.repo}/contents/${GITHUB_CONFIG.path}`;
   
   // 현재 파일의 SHA 가져오기 (업데이트 시 필요)
@@ -2194,8 +2209,8 @@ function checkBirthdays() {
 // ============================================================
 
 function calculateLifeDuration() {
-  const birth = new Date(1996, 11, 17);
-  const death = new Date(2026, 5, 1);
+  const birth = new Date(1996, 10, 17);
+  const death = new Date(2026, 4, 1);
   const diffTime = Math.abs(death - birth);
   const totalDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
   let years = death.getFullYear() - birth.getFullYear();
@@ -2204,7 +2219,7 @@ function calculateLifeDuration() {
   if (days < 0) { months--; days += 30; }
   if (months < 0) { years--; months += 12; }
   const el = document.getElementById('life-duration');
-  if (el) el.innerHTML = `제가 세상에서 떠난 지 ${years}년 ${months}개월 ${days}일, ${totalDays.toLocaleString()}일`;
+  if (el) el.innerHTML = `제가 세상에 먼 지 ${years}년 ${months}개월 ${days}일, ${totalDays.toLocaleString()}일`;
 }
 
 // ============================================================
@@ -2235,8 +2250,6 @@ document.addEventListener('DOMContentLoaded', async () => {
       GITHUB_CONFIG.owner === 'YOUR_GITHUB_USERNAME' ||
       GITHUB_CONFIG.repo === 'YOUR_REPO_NAME') {
     console.warn('⚠️ GitHub 설정이 필요합니다. config를 수정해주세요.');
-
-    
     showToast('⚠️ GitHub 설정이 필요합니다. config.js 파일을 확인해주세요.', 5000);
   }
 });
