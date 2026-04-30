@@ -1352,7 +1352,7 @@ const GITHUB_CONFIG = {
   owner: 'blogsteller-rgb',     // GitHub 사용자명
   repo: 'family',             // 리포지토리 이름
   path: 'data/pets_data.json',         // 저장할 파일 경로
-  token: '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'          // Personal Access Token (repo 권한 필요)
+  token: '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'          // Personal Access Token (repo 권한 필요)
 };
 
 // ============================================================
@@ -1371,37 +1371,29 @@ const DATA_VERSION = 'v4_github';
 // GitHub API 함수
 // ============================================================
 
-// GitHub에서 pets.json 파일 읽기
+// GitHub에서 pets_data.json 파일 읽기 (raw URL 방식 - 캐시 무효화 포함)
 async function fetchPetsFromGitHub() {
-  const url = `https://api.github.com/repos/${GITHUB_CONFIG.owner}/${GITHUB_CONFIG.repo}/contents/${GITHUB_CONFIG.path}`;
+  const rawUrl = `https://raw.githubusercontent.com/${GITHUB_CONFIG.owner}/${GITHUB_CONFIG.repo}/main/${GITHUB_CONFIG.path}?t=${Date.now()}`;
   
   try {
-    const response = await fetch(url, {
-      headers: {
-        'Authorization': `token ${GITHUB_CONFIG.token}`,
-        'Accept': 'application/vnd.github.v3+json'
-      }
-    });
+    const response = await fetch(rawUrl);
     
     if (response.status === 404) {
-      // 파일이 없으면 새로 생성
-      console.log('pets.json 파일이 없습니다. 새로 생성합니다.');
+      console.log('pets_data.json 파일이 없습니다.');
       return null;
     }
     
     if (!response.ok) {
-      throw new Error(`GitHub API 오류: ${response.status}`);
+      throw new Error(`raw 파일 읽기 오류: ${response.status}`);
     }
     
-    const data = await response.json();
-    const content = atob(data.content); // Base64 디코드
-    const jsonData = JSON.parse(content);
+    const jsonData = await response.json();
     
     // 버전 체크
     if (jsonData.version === DATA_VERSION) {
       return jsonData.pets;
     } else {
-      console.log('데이터 버전이 다릅니다. 마이그레이션이 필요할 수 있습니다.');
+      console.log('데이터 버전이 다릅니다.');
       return jsonData.pets || [];
     }
   } catch (error) {
